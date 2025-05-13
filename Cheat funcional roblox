@@ -73,6 +73,21 @@ local magnetOn = false
 local espOn = false
 local originalWalkSpeed = humanoid.WalkSpeed
 
+--// Atualiza humanoid e hrp em caso de respawn
+local function updateCharacterReferences()
+	local newChar = player.Character or player.CharacterAdded:Wait()
+	char = newChar
+	humanoid = newChar:WaitForChild("Humanoid")
+	hrp = newChar:WaitForChild("HumanoidRootPart")
+	if speedOn then
+		humanoid.WalkSpeed = originalWalkSpeed * speedMultiplier
+	end
+end
+
+player.CharacterAdded:Connect(function()
+	updateCharacterReferences()
+end)
+
 --// Funções de Fly
 function startFlying()
 	flying = true
@@ -221,6 +236,7 @@ if teamCheck then
 		end
 	end
 end
+
 --// Tornar o frame arrastável
 frame.Active = true
 frame.Draggable = true
