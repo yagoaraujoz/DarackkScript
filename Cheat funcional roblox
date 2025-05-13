@@ -9,6 +9,7 @@ local magnetForce = 5000
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humanoid = char:WaitForChild("Humanoid")
@@ -23,12 +24,12 @@ gui.Parent = player:WaitForChild("PlayerGui")
 --// Frame principal
 local frame = Instance.new("Frame", gui)
 frame.Position = UDim2.new(0, 10, 0, 10)
-frame.Size = UDim2.new(0, 250, 0, 250)
+frame.Size = UDim2.new(0, 250, 0, 295)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 frame.BorderSizePixel = 0
 frame.BackgroundTransparency = 0.2
 
---// Título com o nome "Darackk Scripts"
+--// Título
 local title = Instance.new("TextLabel", frame)
 title.Text = "Darackk Scripts"
 title.Size = UDim2.new(1, 0, 0, 40)
@@ -55,12 +56,13 @@ local flyBtn = createButton("Toggle Fly (F)", 40)
 local speedBtn = createButton("Velocidade: OFF", 85)
 local magnetBtn = createButton("Magnet: OFF", 130)
 local espBtn = createButton("ESP: OFF", 175)
+local autoClickBtn = createButton("AutoClick: OFF", 220)
 
 --// Info
 local info = Instance.new("TextLabel", frame)
 info.Text = "TeamCheck: " .. tostring(teamCheck)
 info.Size = UDim2.new(1, 0, 0, 30)
-info.Position = UDim2.new(0, 0, 0, 220)
+info.Position = UDim2.new(0, 0, 0, 265)
 info.TextColor3 = Color3.fromRGB(255, 255, 255)
 info.BackgroundTransparency = 1
 info.TextSize = 14
@@ -71,9 +73,11 @@ local flying = false
 local speedOn = false
 local magnetOn = false
 local espOn = false
+local autoClickOn = false
+local debounce = false
 local originalWalkSpeed = humanoid.WalkSpeed
 
---// Atualiza humanoid e hrp em caso de respawn
+--// Atualiza referências ao respawn
 local function updateCharacterReferences()
 	local newChar = player.Character or player.CharacterAdded:Wait()
 	char = newChar
@@ -84,11 +88,9 @@ local function updateCharacterReferences()
 	end
 end
 
-player.CharacterAdded:Connect(function()
-	updateCharacterReferences()
-end)
+player.CharacterAdded:Connect(updateCharacterReferences)
 
---// Funções de Fly
+--// Fly
 function startFlying()
 	flying = true
 	local gyro = Instance.new("BodyGyro", hrp)
@@ -113,7 +115,6 @@ function startFlying()
 	end)
 end
 
---// Toggle Fly
 flyBtn.MouseButton1Click:Connect(function()
 	flying = not flying
 	if flying then
@@ -161,7 +162,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
---// ESP Corrigido
+--// ESP
 local function createESP(playerToTrack)
 	if playerToTrack == player then return end
 	if teamCheck and playerToTrack.Team == player.Team then return end
@@ -212,7 +213,6 @@ end
 espBtn.MouseButton1Click:Connect(function()
 	espOn = not espOn
 	espBtn.Text = "ESP: " .. (espOn and "ON" or "OFF")
-
 	if espOn then
 		for _, p in pairs(Players:GetPlayers()) do
 			createESP(p)
@@ -228,6 +228,30 @@ Players.PlayerAdded:Connect(function(p)
 	end
 end)
 
+--// AutoClicker
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		if autoClickOn and not debounce then
+			local center = workspace.CurrentCamera.ViewportSize / 2
+			VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, game, 0)
+			VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, game, 0)
+		end
+	end
+end)
+
+autoClickBtn.MouseButton1Click:Connect(function()
+	if debounce then return end
+	debounce = true
+
+	autoClickOn = not autoClickOn
+	autoClickBtn.Text = "AutoClick: " .. (autoClickOn and "ON" or "OFF")
+
+	task.delay(0.3, function()
+		debounce = false
+	end)
+end)
+
 --// Aviso TeamCheck
 if teamCheck then
 	for _, other in pairs(Players:GetPlayers()) do
@@ -237,6 +261,6 @@ if teamCheck then
 	end
 end
 
---// Tornar o frame arrastável
+--// Tornar arrastável
 frame.Active = true
 frame.Draggable = true
