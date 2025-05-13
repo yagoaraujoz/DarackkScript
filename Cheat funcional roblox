@@ -1,0 +1,226 @@
+--// CONFIG
+local speedMultiplier = 3
+local flyKey = Enum.KeyCode.F
+local teamCheck = true
+local magnetRange = 20
+local magnetForce = 5000
+
+--// Serviços
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+--// Interface
+local gui = Instance.new("ScreenGui")
+gui.Name = "TestModUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--// Frame principal
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.Size = UDim2.new(0, 250, 0, 250)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.2
+
+--// Título com o nome "Darackk Scripts"
+local title = Instance.new("TextLabel", frame)
+title.Text = "Darackk Scripts"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 24
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Center
+
+--// Botões
+local function createButton(name, posY)
+	local btn = Instance.new("TextButton", frame)
+	btn.Text = name
+	btn.Size = UDim2.new(1, 0, 0, 40)
+	btn.Position = UDim2.new(0, 0, 0, posY)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 123, 255)
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 18
+	return btn
+end
+
+local flyBtn = createButton("Toggle Fly (F)", 40)
+local speedBtn = createButton("Velocidade: OFF", 85)
+local magnetBtn = createButton("Magnet: OFF", 130)
+local espBtn = createButton("ESP: OFF", 175)
+
+--// Info
+local info = Instance.new("TextLabel", frame)
+info.Text = "TeamCheck: " .. tostring(teamCheck)
+info.Size = UDim2.new(1, 0, 0, 30)
+info.Position = UDim2.new(0, 0, 0, 220)
+info.TextColor3 = Color3.fromRGB(255, 255, 255)
+info.BackgroundTransparency = 1
+info.TextSize = 14
+info.TextXAlignment = Enum.TextXAlignment.Center
+
+--// Estados
+local flying = false
+local speedOn = false
+local magnetOn = false
+local espOn = false
+local originalWalkSpeed = humanoid.WalkSpeed
+
+--// Funções de Fly
+function startFlying()
+	flying = true
+	local gyro = Instance.new("BodyGyro", hrp)
+	gyro.P = 9e4
+	gyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	gyro.CFrame = hrp.CFrame
+
+	local vel = Instance.new("BodyVelocity", hrp)
+	vel.Velocity = Vector3.new(0, 0, 0)
+	vel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not flying then
+			gyro:Destroy()
+			vel:Destroy()
+			conn:Disconnect()
+			return
+		end
+		gyro.CFrame = workspace.CurrentCamera.CFrame
+		vel.Velocity = workspace.CurrentCamera.CFrame.LookVector * 50
+	end)
+end
+
+--// Toggle Fly
+flyBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	if flying then
+		startFlying()
+	end
+end)
+
+--// Velocidade
+speedBtn.MouseButton1Click:Connect(function()
+	speedOn = not speedOn
+	if speedOn then
+		humanoid.WalkSpeed = originalWalkSpeed * speedMultiplier
+		speedBtn.Text = "Velocidade: ON"
+	else
+		humanoid.WalkSpeed = originalWalkSpeed
+		speedBtn.Text = "Velocidade: OFF"
+	end
+end)
+
+--// Magnet
+magnetBtn.MouseButton1Click:Connect(function()
+	magnetOn = not magnetOn
+	magnetBtn.Text = "Magnet: " .. (magnetOn and "ON" or "OFF")
+end)
+
+--// Magnetismo
+RunService.RenderStepped:Connect(function()
+	if magnetOn then
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("BasePart") and not obj.Anchored and (obj.Position - hrp.Position).Magnitude <= magnetRange then
+				if not obj:FindFirstChild("MagnetForce") then
+					local bodyPos = Instance.new("BodyPosition")
+					bodyPos.Name = "MagnetForce"
+					bodyPos.MaxForce = Vector3.new(magnetForce, magnetForce, magnetForce)
+					bodyPos.P = 5000
+					bodyPos.D = 100
+					bodyPos.Position = hrp.Position + Vector3.new(0, 2, 0)
+					bodyPos.Parent = obj
+					task.delay(1.5, function()
+						if bodyPos then bodyPos:Destroy() end
+					end)
+				end
+			end
+		end
+	end
+end)
+
+--// ESP Corrigido
+local function createESP(playerToTrack)
+	if playerToTrack == player then return end
+	if teamCheck and playerToTrack.Team == player.Team then return end
+
+	local function addESP(char)
+		local head = char:FindFirstChild("Head")
+		if not head then return end
+		if head:FindFirstChild("ESPTag") then return end
+
+		local esp = Instance.new("BillboardGui")
+		esp.Name = "ESPTag"
+		esp.Size = UDim2.new(0, 100, 0, 20)
+		esp.StudsOffset = Vector3.new(0, 2, 0)
+		esp.AlwaysOnTop = true
+		esp.Parent = head
+
+		local label = Instance.new("TextLabel", esp)
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = playerToTrack.Name
+		label.TextColor3 = Color3.fromRGB(255, 0, 0)
+		label.TextStrokeTransparency = 0
+		label.TextScaled = true
+	end
+
+	if playerToTrack.Character then
+		addESP(playerToTrack.Character)
+	end
+
+	playerToTrack.CharacterAdded:Connect(function(char)
+		char:WaitForChild("Head")
+		addESP(char)
+	end)
+end
+
+local function removeAllESP()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local head = p.Character:FindFirstChild("Head")
+			if head then
+				local esp = head:FindFirstChild("ESPTag")
+				if esp then esp:Destroy() end
+			end
+		end
+	end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	espOn = not espOn
+	espBtn.Text = "ESP: " .. (espOn and "ON" or "OFF")
+
+	if espOn then
+		for _, p in pairs(Players:GetPlayers()) do
+			createESP(p)
+		end
+	else
+		removeAllESP()
+	end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+	if espOn then
+		createESP(p)
+	end
+end)
+
+--// Aviso TeamCheck
+if teamCheck then
+	for _, other in pairs(Players:GetPlayers()) do
+		if other ~= player and other.Team == player.Team then
+			warn("Jogador na mesma equipe detectado:", other.Name)
+		end
+	end
+end
+--// Tornar o frame arrastável
+frame.Active = true
+frame.Draggable = true
